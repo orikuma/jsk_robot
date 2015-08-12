@@ -6,7 +6,7 @@
   <arg name="publish_viso_tf" default="false" />
   <!-- for ekf -->
   <arg name="use_robot_pose_ekf" default="true" />
-  <arg name="odom_used" default = "true" />
+  <arg name="odom_used" default = "false" />
   <arg name="odom_data" default="/odom" />
   <arg name="imu_used" default = "false" />
   <arg name="imu_data" default="/imu" />
