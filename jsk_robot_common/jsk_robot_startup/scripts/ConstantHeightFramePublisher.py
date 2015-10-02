@@ -16,6 +16,7 @@ class ConstantHeightFramePublisher:
         self.rate = rospy.Rate(rospy.get_param("~rate", 10.0)) # [Hz]
         self.height = rospy.get_param("~height", 1.0) # [m]
         self.parent = rospy.get_param("~parent_frame", "BODY")
+        self.odom = rospy.get_param("~odom_frame", "odom")
         self.frame_name = rospy.get_param("~frame_name", "pointcloud_to_scan_base")
 
     def execute(self):
@@ -28,8 +29,8 @@ class ConstantHeightFramePublisher:
 
     def make_constant_tf(self):
         try:
-            common_time = self.listener.getLatestCommonTime(self.parent, '/odom')
-            (trans,rot) = self.listener.lookupTransform(self.parent, '/odom', common_time)
+            common_time = self.listener.getLatestCommonTime(self.parent, self.odom)
+            (trans,rot) = self.listener.lookupTransform(self.parent, self.odom, common_time)
             # transformation: (x, y): same as parent, z: equal to height
             T = tf.transformations.quaternion_matrix(rot)
             T[:3, 3] = trans
