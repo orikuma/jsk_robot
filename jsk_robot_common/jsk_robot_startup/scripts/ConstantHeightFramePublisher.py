@@ -41,7 +41,7 @@ class ConstantHeightFramePublisher:
             target_rot = tf.transformations.quaternion_from_euler(rot_euler[0], rot_euler[1], 0.0)
             # publish tf
             self.broadcast.sendTransform(target_trans, target_rot, common_time, self.frame_name, self.parent)
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf.Exception):
             rospy.logwarn("[%s] Failed to solve tf of %s to %s.", rospy.get_name(), self.parent, self.odom)
             return
 
