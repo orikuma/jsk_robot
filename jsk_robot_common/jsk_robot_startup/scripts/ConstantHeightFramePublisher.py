@@ -28,7 +28,8 @@ class ConstantHeightFramePublisher:
 
     def make_constant_tf(self):
         try:
-            (trans,rot) = self.listener.lookupTransform(self.parent, '/odom', rospy.Time(0))
+            common_time = self.listener.getLatestCommonTime(self.parent, '/odom')
+            (trans,rot) = self.listener.lookupTransform(self.parent, '/odom', common_time)
             # transformation: (x, y): same as parent, z: equal to height
             T = tf.transformations.quaternion_matrix(rot)
             T[:3, 3] = trans
@@ -38,7 +39,7 @@ class ConstantHeightFramePublisher:
             rot_euler = tf.transformations.euler_from_quaternion(rot)
             target_rot = tf.transformations.quaternion_from_euler(rot_euler[0], rot_euler[1], 0.0)
             # publish tf
-            self.broadcast.sendTransform(target_trans, target_rot, rospy.Time.now(), self.frame_name, self.parent)
+            self.broadcast.sendTransform(target_trans, target_rot, common_time, self.frame_name, self.parent)
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             return
 
