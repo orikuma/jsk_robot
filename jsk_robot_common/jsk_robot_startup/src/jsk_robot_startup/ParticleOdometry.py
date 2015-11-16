@@ -16,6 +16,8 @@ from std_msgs.msg import Empty
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import PoseWithCovariance, TwistWithCovariance, Twist, Pose, Point, Quaternion, Vector3
 
+from jsk_robot_startup.IIRFilter import IIRFilter
+
 # scipy.stats.multivariate_normal only can be used after SciPy 0.14.0
 # input: x(array), mean(array), cov(matrix) output: probability of x
 def norm_pdf_multivariate(x, mean, cov):
@@ -59,6 +61,13 @@ class ParticleOdometry(object):
         self.pitch_error_sigma = rospy.get_param("~pitch_error_sigma", 0.05) # pitch error probability from imu. (referenced only when use_imu is True)
         self.yaw_error_sigma = rospy.get_param("~yaw_error_sigma", 0.1) # yaw error probability from imu. (referenced only when use_imu and use_imu_yaw are both True)
         self.min_weight = rospy.get_param("~min_weight", 1e-10)
+        self.use_filter = rospy.get_param("~use_filter", False)
+        if self.use_filter:
+            filter_dim = rospy.get_param("~filter_dimension", 2)
+            v_cutoff = min(float(rospy.get_param("~velocity_cutoff", 10)), self.rate / 2.0) # must be larger than nyquist frequency
+            self.filters = []
+            for i in range(6):
+                self.filters.append(IIRFilter(filter_dim, v_cutoff / self.rate))
         self.r = rospy.Rate(self.rate)
         self.lock = threading.Lock()
         self.odom = None
@@ -218,6 +227,9 @@ class ParticleOdometry(object):
         self.odom.twist = self.source_odom.twist
         # estimate gaussian distribution for Odometry msg 
         mean, cov = self.guess_normal_distribution(self.particles)
+        if self.use_filter:
+            for i in range(6):
+                mean[i] = self.filters[i].execute(mean[i])
         self.odom.pose.pose = self.convert_list_to_pose(mean)
         self.odom.pose.covariance = list(itertools.chain(*cov))
         self.pub.publish(self.odom)
