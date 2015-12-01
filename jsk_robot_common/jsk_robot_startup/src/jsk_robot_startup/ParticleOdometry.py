@@ -15,6 +15,7 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Empty
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import PoseWithCovariance, TwistWithCovariance, Twist, Pose, Point, Quaternion, Vector3
+from multiprocessing import Process, Queue
 
 # scipy.stats.multivariate_normal only can be used after SciPy 0.14.0
 # input: x(array), mean(array), cov(matrix) output: probability of x
@@ -118,7 +119,19 @@ class ParticleOdometry(object):
     def sampling(self, particles, source_odom):
         current_time = source_odom.header.stamp
         global_twist_with_covariance = self.transform_twist_with_covariance_to_global(source_odom.pose, source_odom.twist)
-        return [self.state_transition_probability_rvs(prt, global_twist_with_covariance.twist, global_twist_with_covariance.covariance, current_time) for prt in particles]
+        queue = Queue()
+        process_list = []
+        new_partilcles = []
+        for prt in particles:
+            process = Process(target=self.sampling_process, args=(queue, prt, global_twist_with_covariance.twist, global_twist_with_covariance.covariance, current_time))
+            process.start()
+            process_list.append(process)
+        for i in range(len(particles)):
+            new_partilcles.append(queue.get())
+        return new_partilcles
+
+    def sampling_process(self, queue, prt, global_twist, global_twist_covariance, current_time):
+        queue.put(self.state_transition_probability_rvs(prt, global_twist, global_twist_covariance, current_time))
         
     # input: particles(list of pose), source_odom(control input), measure_odom(measurement),  min_weight(float) output: list of weights
     def weighting(self, particles, min_weight):
