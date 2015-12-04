@@ -246,15 +246,22 @@ class ParticleOdometry(object):
     ## callback functions
     def source_odom_callback(self, msg):        
         with self.lock:
-            if self.source_odom != None:
-                dt = (msg.header.stamp - self.source_odom.header.stamp).to_sec()
-            else:
-                dt = 0
-            if dt > self.source_skip_dt:
-                rospy.logwarn("[%s]: ignore source_odom because there is a suspicion that has stopped. elapsed time is %f [sec]", rospy.get_name(), dt)
-                self.source_odom.header.stamp = msg.header.stamp
+            vel = [msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z,
+                   msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z]
+            if any([abs(v) > 0.5 for v in vel]):
+                rospy.logwarn("[%s]: ignore source_odom because velocity over 0.5", rospy.get_name())
+                return
             else:
                 self.source_odom = msg
+            # if self.source_odom != None:
+            #     dt = (msg.header.stamp - self.source_odom.header.stamp).to_sec()
+            # else:
+            #     dt = 0
+            # if dt > self.source_skip_dt:
+            #     rospy.logwarn("[%s]: ignore source_odom because there is a suspicion that has stopped. elapsed time is %f [sec]", rospy.get_name(), dt)
+            #     self.source_odom.header.stamp = msg.header.stamp
+            # else:
+            #     self.source_odom = msg
 
     def measure_odom_callback(self, msg):
         with self.lock:
