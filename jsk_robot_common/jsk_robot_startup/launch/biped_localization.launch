@@ -9,6 +9,10 @@
   <arg name="slam_laser_min_height" default="-0.2"/>
   <arg name="robot" default="default"/>
 
+  <node pkg="jsk_topic_tools" type="relay" name="relay_from_tf_to_localization_tf">
+    <remap from="~input" to="/tf"/>
+    <remap from="~output" to="/tf_localization"/>
+  </node>
   
   <group>
     <remap from="/tf" to="/tf_localization"/>
@@ -57,7 +61,7 @@
     <node pkg="jsk_robot_startup" type="auto_reset_slam.py" name="auto_reset_slam" />
   </group>
 
-  <node pkg="jsk_topic_tools" type="relay" name="localization_tf_relay">
+  <node pkg="jsk_topic_tools" type="relay" name="relay_from_tf_localization_to_tf">
     <remap from="~input" to="/tf_localization"/>
     <remap from="~output" to="/tf"/>
   </node>
