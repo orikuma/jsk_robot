@@ -11,7 +11,7 @@
 
   
   <group>
-    <remap from="/tf" to="/localization/tf"/>
+    <remap from="/tf" to="/tf_localization"/>
     
     <!-- Add slam laser pointcloud nodes to multisense_laser nodelet -->
     <group if="$(arg set_slam_laser_params)">
@@ -62,8 +62,8 @@
   </group>
 
   <node pkg="jsk_topic_tools" type="relay" name="localization_tf_relay">
-    <remap from="~input" to="/tf"/>
-    <remap from="~output" to="/localization/tf"/>
+    <remap from="~input" to="/tf_localization"/>
+    <remap from="~output" to="/tf"/>
   </node>
   
 </launch>
