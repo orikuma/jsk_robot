@@ -87,10 +87,10 @@ class ParticleOdometry(object):
     ## particle filter functions
     # input: particles(list of pose), source_odom(control input)  output: list of sampled particles(pose)
     def sampling(self, particles, source_odom):
-        global_twist_with_covariance = self.transform_twist_with_covariance_to_global(source_odom.pose, source_odom.twist)
-        sampled_velocities = self.state_transition_probability_rvs(global_twist_with_covariance.twist, global_twist_with_covariance.covariance) # make sampeld velocity at once because multivariate_normal calculates invert matrix and it is slow
+        sampled_local_velocities = self.state_transition_probability_rvs(source_odom.twist.twist, source_odom.twist.covariance) # make sampeld velocity at once because multivariate_normal calculates invert matrix and it is slow
+        sampled_global_twist = [transform_local_twist_to_global(source_odom.pose.pose, Twist(Vector3(*vel[0:3]), Vector3(*vel[3:6]))) for vel in sampled_local_velocities]
         dt = (source_odom.header.stamp - self.odom.header.stamp).to_sec()
-        return [update_pose(prt, Twist(Vector3(*vel[0:3]), Vector3(*vel[3:6])), dt) for prt, vel in zip(particles, sampled_velocities)]
+        return [update_pose(prt, tws, dt) for prt, tws in zip(particles, sampled_global_twist)]
         
     # input: particles(list of pose), min_weight(float) output: list of weights
     def weighting(self, particles, min_weight):
