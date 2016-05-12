@@ -4,7 +4,7 @@ import rospy
 import numpy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point, Quaternion, Twist, Vector3, TwistWithCovariance, TransformStamped
-from std_msgs.msg import Float64, Empty
+from std_srvs.srv import SetBool, SetBoolResponse
 import tf
 import time
 import threading
@@ -18,6 +18,7 @@ class OdometryOffset(object):
         rospy.init_node("OdometryOffset", anonymous=True)
         self.offset_matrix = None
         self.prev_odom = None
+        self.update_odom_flag = True
         self.initial_base_link_transform = make_homogeneous_matrix([0, 0, 0], [0, 0, 0, 1])
         self.lock = threading.Lock()
         # execute rate
@@ -55,7 +56,15 @@ class OdometryOffset(object):
             self.reconfigure_server = Server(OdometryOffsetReconfigureConfig, self.reconfigure_callback)
         self.source_odom_sub = rospy.Subscriber("~source_odom", Odometry, self.source_odom_callback)
         self.init_transform_sub = rospy.Subscriber("~initial_base_link_transform", TransformStamped, self.init_transform_callback) # init_transform is assumed to be transform of init_odom -> base_link
+        self.update_odom_srv = rospy.Service("~update_odom", SetBool, self.update_odom_srv_callback)
         self.pub = rospy.Publisher("~output", Odometry, queue_size = 1)
+
+    def update_odom_srv_callback(self, req):
+        self.update_odom_flag = req.data
+        res = SetBoolResponse()
+        res.success = True
+        res.message = "Change update_odom_flag of " + str(rospy.get_name()) + " to " + str(self.update_odom_flag)
+        return res
 
     def reconfigure_callback(self, config, level):
         with self.lock:
@@ -91,6 +100,8 @@ class OdometryOffset(object):
 
     def source_odom_callback(self, msg):
         with self.lock:
+            if not self.update_odom_flag:
+                return
             if self.offset_matrix != None:
                 source_odom_matrix = make_homogeneous_matrix([getattr(msg.pose.pose.position, attr) for attr in ["x", "y", "z"]], [getattr(msg.pose.pose.orientation, attr) for attr in ["x", "y", "z", "w"]])
                 new_odom = copy.deepcopy(msg)
