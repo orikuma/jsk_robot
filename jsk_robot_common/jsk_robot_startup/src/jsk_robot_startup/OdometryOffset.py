@@ -57,7 +57,7 @@ class OdometryOffset(object):
         self.source_odom_sub = rospy.Subscriber("~source_odom", Odometry, self.source_odom_callback)
         self.init_transform_sub = rospy.Subscriber("~initial_base_link_transform", TransformStamped, self.init_transform_callback) # init_transform is assumed to be transform of init_odom -> base_link
         self.start_update_srv = rospy.Service("~start", Empty, self.start_update_srv_callback)
-        self.stop_update_srv = rospy.Service("~start", Empty, self.stop_update_srv_callback)
+        self.stop_update_srv = rospy.Service("~stop", Empty, self.stop_update_srv_callback)
         self.pub = rospy.Publisher("~output", Odometry, queue_size = 1)
         
     def start_update_srv_callback(self, req):
