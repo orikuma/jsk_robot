@@ -4,7 +4,7 @@ import rospy
 import numpy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point, Quaternion, Twist, Vector3, TwistWithCovariance, TransformStamped
-from std_srvs.srv import SetBool, SetBoolResponse
+from std_srvs.srv import Empty, EmptyResponse
 import tf
 import time
 import threading
@@ -56,15 +56,19 @@ class OdometryOffset(object):
             self.reconfigure_server = Server(OdometryOffsetReconfigureConfig, self.reconfigure_callback)
         self.source_odom_sub = rospy.Subscriber("~source_odom", Odometry, self.source_odom_callback)
         self.init_transform_sub = rospy.Subscriber("~initial_base_link_transform", TransformStamped, self.init_transform_callback) # init_transform is assumed to be transform of init_odom -> base_link
-        self.update_odom_srv = rospy.Service("~update_odom", SetBool, self.update_odom_srv_callback)
+        self.start_update_srv = rospy.Service("~start", Empty, self.start_update_srv_callback)
+        self.stop_update_srv = rospy.Service("~start", Empty, self.stop_update_srv_callback)
         self.pub = rospy.Publisher("~output", Odometry, queue_size = 1)
+        
+    def start_update_srv_callback(self, req):
+        with self.lock:
+            self.update_odom_flag = True
+            return EmptyResponse()
 
-    def update_odom_srv_callback(self, req):
-        self.update_odom_flag = req.data
-        res = SetBoolResponse()
-        res.success = True
-        res.message = "Change update_odom_flag of " + str(rospy.get_name()) + " to " + str(self.update_odom_flag)
-        return res
+    def stop_update_srv_callback(self, req):
+        with self.lock:
+            self.update_odom_flag = False
+            return EmptyResponse()
 
     def reconfigure_callback(self, config, level):
         with self.lock:
