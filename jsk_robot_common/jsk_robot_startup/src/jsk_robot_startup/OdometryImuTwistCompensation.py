@@ -31,7 +31,7 @@ class OdometryImuTwistCompensation(object):
         self.pub = rospy.Publisher("~output", Odometry, queue_size = 1)
         self.init_signal_sub = rospy.Subscriber("~init_signal", Empty, self.init_signal_callback)
 
-    def init_signal_callback(self):
+    def init_signal_callback(self, msg):
         with self.lock:
             self.imu_odom = None
             self.odom = None
@@ -77,15 +77,20 @@ class OdometryImuTwistCompensation(object):
                     self.pub_odom.header.frame_id = self.odom_frame
                     self.pub_odom.child_frame_id = self.base_link_frame
                 else:
-                    dt = (msg.header.stamp - self.odom.header.stamp).to_sec()
-                    # update odom
+                    odom_dt = (msg.header.stamp - self.odom.header.stamp).to_sec()
                     global_twist_with_cov = TwistWithCovariance(transform_twist(msg.pose.pose, msg.twist.twist, to_global = True),
                                                                 transform_twist_covariance(msg.pose.pose, msg.twist.covariance, to_global = True))
-                    self.odom.pose.pose = update_pose(self.odom.pose.pose, global_twist_with_cov.twist, dt)
-                    self.odom.pose.covariance = update_pose_covariance(self.odom.pose.covariance, global_twist_with_cov.covariance, dt)
+                    # update odom
+                    self.odom.pose.pose = update_pose(self.odom.pose.pose, global_twist_with_cov.twist, odom_dt)
+                    self.odom.pose.covariance = update_pose_covariance(self.odom.pose.covariance, global_twist_with_cov.covariance, odom_dt)
                     self.odom.twist.twist = transform_twist(self.odom.pose.pose, global_twist_with_cov.twist, to_global = False)
                     self.odom.twist.covariance = transform_twist_covariance(self.odom.pose.pose, global_twist_with_cov.covariance, to_global = False)
                     self.odom.header.stamp = msg.header.stamp
+                    
+                    # update imu_pose
+                    imu_dt = (msg.header.stamp - self.imu_odom.header.stamp).to_sec()
+                    self.imu_odom.pose.pose = update_pose(self.imu_odom.pose.pose, global_twist_with_cov.twist, imu_dt)
+                    self.imu_odom.pose.covariance = update_pose_covariance(self.imu_odom.pose.covariance, global_twist_with_cov.covariance, imu_dt)
                     
                     # fuse imu integrated pose and raw odom
                     new_pose, new_cov = fuse_pose_distribution(self.odom.pose, self.imu_odom.pose)
