@@ -162,3 +162,30 @@ def transform_quaternion_to_euler(quat, prev_euler = None):
             while abs(prev_euler[i] - ret_euler[i]) > numpy.pi:
                 ret_euler[i] += numpy.sign(prev_euler[i] - ret_euler[i]) * 2 * numpy.pi
     return ret_euler
+
+# sources is assumed to be PoseWithCovariance
+def fuse_pose_distribution(*sources):
+    means = []
+    covs = []
+    for src in sources:
+        euler = tf.transformations.euler_from_quaternion([src.pose.orientation.x, src.pose.orientation.y,
+                                                          src.pose.orientation.z, src.pose.orientation.w])
+        means.append(numpy.array([[src.pose.position.x],
+                                  [src.pose.position.y],
+                                  [src.pose.position.z],
+                                  [euler[0]],
+                                  [euler[1]],
+                                  [euler[2]]])) # 6d column vector
+        covs.append(numpy.mat(src.covariance).reshape(6, 6))
+    
+    # Calculate new state by most likelihood method:
+    # sigma_new = (sigma_0^-1 + sigma_1^-1)^-1
+    # x_new = sigma_new * (sigma_0^-1 * x_0 + sigma_1^-1 * x_1)
+    # Less inverse form (same as above):
+    # sigma__new = sigma_1 - sigma_1 * (sigma_1 + sigma_2)^-1 * sigma_1
+    # x_new = x1 + sigma_1*(sigma_1+sigma_2)^-1*(x_2-x_1)
+    # cf. "Distributed sensor fusion for object position estimation by multi-robot systems"
+    cov0_inv_sum_covs = numpy.dot(covs[0], numpy.linalg.inv(covs[0] + covs[1]))
+    new_cov = covs[0] - numpy.dot(cov0_inv_sum_covs, covs[0])
+    new_mean = means[0] + numpy.dot(cov0_inv_sum_covs, means[1] - means[0])
+    return numpy.array(new_mean).reshape(-1,).tolist(), numpy.array(new_cov).reshape(-1,).tolist() # return list of mean and covariance

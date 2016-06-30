@@ -1,0 +1,10 @@
+<launch>
+  <node pkg="biped_localization" type="odometry_imu_twist_compensation.py" name="odometry_imu_twist_compensation">
+    <remap from="~input_odom" to="/odom" />
+    <remap from="~imu_twist" to="/imu/twist" />    
+    <rosparam>
+      publish_tf: false
+    </rosparam>
+  </node>
+</launch>
+

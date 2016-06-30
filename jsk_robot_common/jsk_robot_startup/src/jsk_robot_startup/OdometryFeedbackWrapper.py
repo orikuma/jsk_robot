@@ -16,7 +16,7 @@ from scipy import signal
 from dynamic_reconfigure.server import Server
 from jsk_robot_startup.cfg import OdometryFeedbackWrapperReconfigureConfig
 
-from odometry_utils import transform_local_twist_to_global, transform_local_twist_covariance_to_global, update_pose, update_pose_covariance, broadcast_transform, make_homogeneous_matrix
+from odometry_utils import transform_local_twist_to_global, transform_local_twist_covariance_to_global, update_pose, update_pose_covariance, broadcast_transform, make_homogeneous_matrix, fuse_pose_distribution
 
 class OdometryFeedbackWrapper(object):
     def __init__(self):
@@ -121,7 +121,7 @@ class OdometryFeedbackWrapper(object):
                 self.feedback_odom.pose.covariance = update_pose_covariance(self.feedback_odom.pose.covariance, global_feedback_odom_twist_covariance, dt)
                 self.feedback_odom.header.stamp = self.odom.header.stamp
                 # integrate feedback_odom and current odom
-                new_odom_pose, new_odom_cov = self.calculate_mean_and_covariance(self.odom.pose, self.feedback_odom.pose)
+                new_odom_pose, new_odom_cov = fuse_pose_distribution(self.odom.pose, self.feedback_odom.pose)
                 # update self.odom according to the result of integration
                 quat = tf.transformations.quaternion_from_euler(*new_odom_pose[3:6])
                 self.odom.pose.pose = Pose(Point(*new_odom_pose[0:3]), Quaternion(*quat))
@@ -135,33 +135,6 @@ class OdometryFeedbackWrapper(object):
                                                                     [self.source_odom.pose.pose.orientation.x, self.source_odom.pose.pose.orientation.y, self.source_odom.pose.pose.orientation.z, self.source_odom.pose.pose.orientation.w])
                 # Hnew = Hold * T -> T = Hold^-1 * Hnew
                 self.offset_homogeneous_matrix = numpy.dot(numpy.linalg.inv(source_homogeneous_matrix), new_pose_homogeneous_matrix) # self.odom.header.stamp is assumed to be same as self.source_odom.header.stamp
-                
-    def calculate_mean_and_covariance(self, current_pose, feedback_pose):
-        sources = [current_pose, feedback_pose]
-        means = []
-        covs = []
-        for src in sources:
-            euler = tf.transformations.euler_from_quaternion([src.pose.orientation.x, src.pose.orientation.y,
-                                                              src.pose.orientation.z, src.pose.orientation.w])
-            means.append(numpy.array([[src.pose.position.x],
-                                      [src.pose.position.y],
-                                      [src.pose.position.z],
-                                      [euler[0]],
-                                      [euler[1]],
-                                      [euler[2]]])) # 6d column vector
-            covs.append(numpy.mat(src.covariance).reshape(6, 6))
-    
-        # Calculate new state by most likelihood method:
-        # sigma_new = (sigma_0^-1 + sigma_1^-1)^-1
-        # x_new = sigma_new * (sigma_0^-1 * x_0 + sigma_1^-1 * x_1)
-        # Less inverse form (same as above):
-        # sigma__new = sigma_1 - sigma_1 * (sigma_1 + sigma_2)^-1 * sigma_1
-        # x_new = x1 + sigma_1*(sigma_1+sigma_2)^-1*(x_2-x_1)
-        # cf. "Distributed sensor fusion for object position estimation by multi-robot systems"
-        cov0_inv_sum_covs = numpy.dot(covs[0], numpy.linalg.inv(covs[0] + covs[1]))
-        new_cov = covs[0] - numpy.dot(cov0_inv_sum_covs, covs[0])        
-        new_mean = means[0] + numpy.dot(cov0_inv_sum_covs, means[1] - means[0])
-        return numpy.array(new_mean).reshape(-1,).tolist(), numpy.array(new_cov).reshape(-1,).tolist() # return list
 
     def check_feedback_time(self):
         time_from_prev_feedback = (self.odom.header.stamp - self.prev_feedback_time).to_sec()
