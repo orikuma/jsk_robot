@@ -8,29 +8,45 @@ import math
 from geometry_msgs.msg import PoseWithCovariance, TwistWithCovariance, Twist, Pose, Point, Quaternion, Vector3
 
 # twist transformation
-def transform_local_twist_to_global(pose, local_twist):
+def transform_twist(pose, twist, to_global = True):
     trans = [pose.position.x, pose.position.y, pose.position.z]
     rot = [pose.orientation.x, pose.orientation.y,
            pose.orientation.z, pose.orientation.w]
     rotation_matrix = tf.transformations.quaternion_matrix(rot)[:3, :3]
-    global_velocity = numpy.dot(rotation_matrix, numpy.array([[local_twist.linear.x],
-                                                              [local_twist.linear.y],
-                                                              [local_twist.linear.z]]))
-    global_omega = numpy.dot(rotation_matrix, numpy.array([[local_twist.angular.x],
-                                                           [local_twist.angular.y],
-                                                           [local_twist.angular.z]]))
-    return Twist(Vector3(*global_velocity[:, 0]), Vector3(*global_omega[:, 0]))
+    if to_global == True:
+        transformation = rotation_matrix # local->global
+    else:
+        transformation = rotation_matrix.T # global->local
+    target_velocity = numpy.dot(transformation, numpy.array([[twist.linear.x],
+                                                             [twist.linear.y],
+                                                             [twist.linear.z]]))
+    target_omega = numpy.dot(transformation, numpy.array([[twist.angular.x],
+                                                          [twist.angular.y],
+                                                          [twist.angular.z]]))
+    return Twist(Vector3(*target_velocity[:, 0]), Vector3(*target_omega[:, 0]))
+
+def transform_twist_covariance(pose, twist_cov, to_global = True):
+    trans = [pose.position.x, pose.position.y, pose.position.z]
+    rot = [pose.orientation.x, pose.orientation.y,
+           pose.orientation.z, pose.orientation.w]
+    rotation_matrix = tf.transformations.quaternion_matrix(rot)[:3, :3]
+    twist_cov_matrix = numpy.matrix(twist_cov).reshape(6, 6)
+    if to_global == True:
+        transformation = rotation_matrix # local->global
+    else:
+        transformation = rotation_matrix.T # global->local
+    target_twist_cov_matrix = numpy.zeros((6, 6))
+    target_twist_cov_matrix[:3, :3] = (transformation.T).dot(twist_cov_matrix[:3, :3].dot(transformation))
+    target_twist_cov_matrix[3:6, 3:6] = (transformation.T).dot(twist_cov_matrix[3:6, 3:6].dot(transformation))
+    return target_twist_cov_matrix.reshape(-1,).tolist()
+
+def transform_local_twist_to_global(pose, local_twist):
+    # obsolute function
+    return transform_twist(pose, local_twist, to_global = True)
 
 def transform_local_twist_covariance_to_global(pose, local_twist_with_covariance):
-    trans = [pose.position.x, pose.position.y, pose.position.z]
-    rot = [pose.orientation.x, pose.orientation.y,
-           pose.orientation.z, pose.orientation.w]
-    rotation_matrix = tf.transformations.quaternion_matrix(rot)[:3, :3]
-    twist_cov_matrix = numpy.matrix(local_twist_with_covariance).reshape(6, 6)
-    global_twist_cov_matrix = numpy.zeros((6, 6))
-    global_twist_cov_matrix[:3, :3] = (rotation_matrix.T).dot(twist_cov_matrix[:3, :3].dot(rotation_matrix))
-    global_twist_cov_matrix[3:6, 3:6] = (rotation_matrix.T).dot(twist_cov_matrix[3:6, 3:6].dot(rotation_matrix))
-    return global_twist_cov_matrix.reshape(-1,).tolist()
+    # obsolute function
+    return transform_twist_covariance(pose, local_twist_with_covariance, to_global = True)
 
 # pose calculation
 def update_pose(pose, global_twist, dt):
