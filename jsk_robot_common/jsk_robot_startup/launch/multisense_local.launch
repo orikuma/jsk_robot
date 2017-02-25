@@ -22,7 +22,8 @@
       <arg name="ip_address" value="$(arg ip_address)"/>
       <arg name="mtu" value="$(arg mtu)" />
       <arg name="use_robot_description" value="false"/>
-      <arg name="not_use_sensor_tf_prefix" value="true"/>
+      <arg name="sensor_tf_prefix" default="multisense" />
+      <arg name="not_use_sensor_tf_prefix" value="false"/>
       <arg name="not_use_robot_state_publisher" value="true" />
       <arg name="use_resize" value="$(arg USE_RESIZE)" />
       <arg name="local" value="true" />
