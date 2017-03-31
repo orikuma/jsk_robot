@@ -75,7 +75,6 @@
       <arg name="left_camera_info" default="/multisense_local/left/camera_info"/>
       <arg name="right_camera_info" default="/multisense_local/right/camera_info"/>
     </include>
-
     <node pkg="jsk_robot_startup" type="OdometryTfManager.py" name="odom_tf_manager">
       <param name="~map_frame" value="map"/>
       <param name="~particle_frame" value="biped_odom_particle"/>
@@ -85,11 +84,13 @@
     </node>    
   </group>
 
+  <!--
   <node pkg="jsk_robot_startup" type="OdometryTfBroadcaster.py" name="odom_tf_broadcaster">
     <remap from="~map_to_particle" to="/odom_tf_manager/map_to_particle"/>
     <remap from="~particle_to_odom" to="/odom_tf_manager/particle_to_odom"/>
     <remap from="~base_to_scan" to="/odom_tf_manager/base_to_scan"/>
   </node>
+  -->
   
   <node pkg="jsk_robot_startup" type="auto_reset_slam.py" name="auto_reset_slam" />
   

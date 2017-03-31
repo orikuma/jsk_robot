@@ -56,5 +56,9 @@
     <param name="srt" value="$(arg srt)"/>
     <param name="str" value="$(arg str)"/>
     <param name="stt" value="$(arg srt)"/>
+    <param name="xmin" value="-10"/>
+    <param name="ymin" value="-10"/>
+    <param name="xmax" value="10"/>
+    <param name="ymax" value="10"/>
   </node>
 </launch>

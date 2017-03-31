@@ -35,7 +35,7 @@ class SlamMapTfToOdometry:
     def base_odom_callback(self, msg):
         with self.lock:
             try:
-                self.listener.waitForTransform(self.map_frame, msg.header.frame_id, msg.header.stamp, rospy.Duration(3))
+                self.listener.waitForTransform(self.map_frame, msg.header.frame_id, msg.header.stamp, rospy.Duration(5))
                 (trans,rot) = self.listener.lookupTransform(self.map_frame, msg.header.frame_id, msg.header.stamp) # current map->base_odom transform
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 return
